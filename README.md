@@ -1,2 +1,2 @@
 # Desafio-BancoDeQuestoes
-Repositório do projeto integrador "Banco de Questões" porposto pelo IFB - Campus São Sebastião.
+Repositório do projeto integrador "Banco de Questões" proposto pelo IFB - Campus São Sebastião.
