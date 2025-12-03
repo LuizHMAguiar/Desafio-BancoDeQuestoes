@@ -50,7 +50,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
 import { Logo } from "./Logo";
 import { User, Teacher, Subject } from "../types/question";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 
 interface AdminPanelProps {
   user: User;

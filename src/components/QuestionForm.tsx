@@ -310,7 +310,7 @@ export function QuestionForm({ categories, onSubmit, onAddCategory, onCancel, in
         transition={{ delay: 0.4 }}
       >
         <Label>Alternativas *</Label>
-        <RadioGroup value={String(correctOption)} onValueChange={(value) => setCorrectOption(Number(value))}>
+        <RadioGroup value={String(correctOption)} onValueChange={(value: string) => setCorrectOption(Number(value))}>
           {options.map((option, index) => (
             <motion.div
               key={index}

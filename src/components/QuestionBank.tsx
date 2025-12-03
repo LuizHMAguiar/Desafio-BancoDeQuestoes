@@ -6,7 +6,7 @@ import { QuestionList } from './QuestionList';
 import { LogOut, Plus, Settings } from 'lucide-react';
 import { Question, Category, User } from '../types/question';
 import { Logo } from './Logo';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface QuestionBankProps {
   user: User;
