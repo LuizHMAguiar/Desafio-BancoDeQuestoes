@@ -109,39 +109,25 @@ export default function App() {
     setLoading(false);
   }, []);
 
-  const handleLogin = (email: string, password: string) => {
-    // Mock login with role determination
-    let mockUser: User;
-    
-    if (email === 'coordenador@escola.com') {
-      mockUser = {
-        id: 'coord-1',
-        name: 'Coordenador',
-        email: email,
-        role: 'coordenador',
-      };
-    } else if (email === 'professor@escola.com') {
-      mockUser = {
-        id: 'prof-1',
-        name: 'Professor',
-        email: email,
-        role: 'professor',
-      };
-    } else {
-      // Default to professor for any other email
-      mockUser = {
-        id: `user-${Date.now()}`,
-        name: email.split("@")[0],
-        email: email,
-        role: 'professor',
-      };
+  const handleLogin = async (email: string, password: string) => {
+    // NOTA: A API fornecida não parece ter um endpoint de autenticação real com senha.
+    // Esta implementação busca um usuário pelo e-mail.
+    // Em um cenário real, você faria um POST para um endpoint de login com e-mail e senha.
+    const response = await fetch(`https://bancodequestoes-api.onrender.com/users?email=${email}`);
+    if (!response.ok) {
+      throw new Error("Falha ao conectar com o servidor.");
     }
-    
-    setUser(mockUser);
-    localStorage.setItem(
-      "currentUser",
-      JSON.stringify(mockUser),
-    );
+    const users: User[] = await response.json();
+    const user = users[0]; // Pega o primeiro usuário que corresponde ao email
+
+    if (user) {
+      // A API retorna 'id' como número, mas o tipo User espera string.
+      const loggedUser = { ...user, id: String(user.id) };
+      setUser(loggedUser);
+      localStorage.setItem("currentUser", JSON.stringify(loggedUser));
+    } else {
+      throw new Error("Usuário não encontrado.");
+    }
   };
 
   const handleLogout = () => {
