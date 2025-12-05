@@ -1,8 +1,8 @@
 export interface Question {
-  id: string;
-  authorId: string;
+  id: number;
+  authorId: number;
   authorName: string;
-  category: string;
+  subject: string;
   tags: string[];
   statement: string;
   options: string[];
@@ -10,27 +10,20 @@ export interface Question {
   createdAt: string;
 }
 
-export interface Category {
-  id: string;
+export interface Subject {
+  id: number;
   name: string;
+  createdAt: string;
 }
 
 export interface User {
-  id: string;
+  id: number;
   name: string;
   email: string;
   role: 'professor' | 'coordenador';
 }
 
-export interface Teacher {
-  id: string;
+export interface Tag {
+  id: number;
   name: string;
-  email: string;
-  createdAt: string;
-}
-
-export interface Subject {
-  id: string;
-  name: string;
-  createdAt: string;
 }
