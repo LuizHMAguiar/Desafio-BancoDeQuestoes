@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner@2.0.3";
 import { motion } from "motion/react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -14,19 +15,27 @@ import {
 import { Logo } from "./Logo";
 
 interface LoginScreenProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (email: string, password: string) => Promise<void>;
 }
 
 export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
-      onLogin(email, password);
-      navigate("/");
+      setLoading(true);
+      try {
+        await onLogin(email, password);
+        navigate("/");
+      } catch (error) {
+        toast.error((error as Error).message || "E-mail ou senha inválidos.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -111,8 +120,8 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                <Button type="submit" className="w-full">
-                  Entrar
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Entrando..." : "Entrar"}
                 </Button>
               </motion.div>
             </form>
