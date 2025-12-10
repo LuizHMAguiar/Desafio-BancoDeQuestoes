@@ -49,7 +49,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
 import { Logo } from "./Logo";
-import { User, Teacher, Subject } from "../types/question";
+import { User, Subject } from "../types/question";
 import { toast } from "sonner";
 
 interface AdminPanelProps {
@@ -61,17 +61,17 @@ interface AdminPanelProps {
 
 
 export function AdminPanel({ user, onLogout }: AdminPanelProps) {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teachers, setTeachers] = useState<User[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teacherDialogOpen, setTeacherDialogOpen] = useState(false);
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{
     type: "teacher" | "subject";
-    id: string;
+    id: number;
     name: string;
   } | null>(null);
-  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [editingTeacher, setEditingTeacher] = useState<User | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [teacherForm, setTeacherForm] = useState({ name: "", email: "" });
   const [subjectForm, setSubjectForm] = useState({ name: "" });
@@ -116,7 +116,7 @@ const initializeData = async () => {
     const users = await response.json();
 
     // Filtra apenas os que têm role professor
-    const teachers: Teacher[] = users.filter((u: any) => u.role === "professor");
+    const teachers: User[] = users.filter((u: any) => u.role === "professor");
 
     // Atualiza estado (se você tiver setTeachers disponível)
     setTeachers(teachers);
@@ -153,7 +153,7 @@ const initializeData = async () => {
       throw new Error("Erro ao adicionar professor");
     }
 
-    const newTeacher: Teacher = await response.json();
+    const newTeacher: User = await response.json();
 
     const updatedTeachers = [...teachers, newTeacher];
     setTeachers(updatedTeachers);
@@ -192,7 +192,7 @@ const handleEditTeacher = async () => {
       throw new Error("Erro ao atualizar professor");
     }
 
-    const updatedTeacher: Teacher = await response.json();
+    const updatedTeacher: User = await response.json();
 
     const updatedTeachers = teachers.map((t) =>
       t.id === updatedTeacher.id ? updatedTeacher : t
@@ -332,7 +332,7 @@ const handleEditSubject = async () => {
 };
 
 
-  const openTeacherDialog = (teacher?: Teacher) => {
+  const openTeacherDialog = (teacher?: User) => {
     if (teacher) {
       setEditingTeacher(teacher);
       setTeacherForm({ name: teacher.name, email: teacher.email });
@@ -356,7 +356,7 @@ const handleEditSubject = async () => {
 
   const openDeleteDialog = (
     type: "teacher" | "subject",
-    id: string,
+    id: number,
     name: string
   ) => {
     setItemToDelete({ type, id, name });
