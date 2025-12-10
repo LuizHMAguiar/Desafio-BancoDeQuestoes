@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -25,19 +25,40 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email && password) {
-      setLoading(true);
-      try {
-        await onLogin(email, password);
-        navigate('/');
-      } catch (error) {
-        toast.error((error as Error).message || 'E-mail ou senha inválidos.');
-      } finally {
-        setLoading(false);
+  e.preventDefault();
+  if (email && password) {
+    setLoading(true);
+    try {
+      // Chamada à API
+      const response = await fetch("https://bancodequestoes-api.onrender.com/users?email="+email);
+      if (!response.ok) {
+        throw new Error("Erro ao buscar usuários");
       }
+
+      const users = await response.json();
+
+      // Verifica se existe usuário com esse email
+      const user = users.find((u: any) => u.email === email);
+
+      if (!user) {
+        throw new Error("Usuário não encontrado");
+      }
+
+      // Aqui você poderia validar a senha também, se a API retornar
+      // por enquanto vamos assumir que qualquer senha é aceita
+
+      // Redireciona conforme o role
+      await onLogin(email, password);
+      navigate("/");
+      
+    } catch (error) {
+      toast.error((error as Error).message || "E-mail ou senha inválidos.");
+    } finally {
+      setLoading(false);
     }
-  };
+  }
+};
+
 
   return (
     <motion.div
@@ -94,9 +115,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
-                <p className="text-xs text-slate-500">
-                  Teste: professor@escola.com ou coordenador@escola.com
-                </p>
+                
               </motion.div>
               <motion.div
                 className="space-y-2"
