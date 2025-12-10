@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { QuestionForm } from './QuestionForm';
 import { LogOut, ArrowLeft } from 'lucide-react';
-import { Question, Category, User } from '../types/question';
+import { Question, Subject, User } from '../types/question';
 import { Logo } from './Logo';
 import { toast } from 'sonner';
 
@@ -13,46 +13,33 @@ interface NewQuestionPageProps {
   onLogout: () => void;
 }
 
-// Mock initial categories
-const initialCategories: Category[] = [
-  { id: '1', name: 'Matemática' },
-  { id: '2', name: 'Português' },
-  { id: '3', name: 'História' },
-  { id: '4', name: 'Geografia' },
-  { id: '5', name: 'Ciências' },
-];
+
 
 export function NewQuestionPage({ user, onLogout }: NewQuestionPageProps) {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const navigate = useNavigate();
 
-  // Load categories from localStorage
+  // Load subjects 
   useEffect(() => {
-    // Try to load subjects from admin panel first, otherwise use initial categories
-    const savedSubjects = localStorage.getItem('subjects');
-    const savedCategories = localStorage.getItem('categories');
+    const fetchSubjects = async () => {
+      try {
+        const response = await fetch('https://bancodequestoes-api.onrender.com/subjects');
+        if (!response.ok) {
+          throw new Error('Erro ao carregar disciplinas');
+        }
+        const data: Subject[] = await response.json();
+        setSubjects(data);
+      } catch (error) {
+        toast.error((error as Error).message);
+      }
+    };
 
-    // Prioritize subjects from admin panel
-    if (savedSubjects) {
-      const subjects = JSON.parse(savedSubjects);
-      const categoriesFromSubjects = subjects.map((s: any) => ({
-        id: s.id,
-        name: s.name
-      }));
-      setCategories(categoriesFromSubjects);
-      localStorage.setItem('categories', JSON.stringify(categoriesFromSubjects));
-    } else if (savedCategories) {
-      setCategories(JSON.parse(savedCategories));
-    } else {
-      setCategories(initialCategories);
-      localStorage.setItem('categories', JSON.stringify(initialCategories));
-    }
-  }, []);
+    fetchSubjects();
+  }, []); 
 
   const handleAddQuestion = (question: Omit<Question, 'id' | 'authorId' | 'authorName' | 'createdAt'>) => {
     const newQuestion: Question = {
       ...question,
-      id: Date.now().toString(),
       authorId: user.id,
       authorName: user.name,
       createdAt: new Date().toISOString(),
@@ -73,17 +60,41 @@ export function NewQuestionPage({ user, onLogout }: NewQuestionPageProps) {
     navigate('/');
   };
 
-  const handleAddCategory = (categoryName: string) => {
-    const newCategory: Category = {
-      id: Date.now().toString(),
-      name: categoryName,
-    };
+ const handleAddSubject = async (subjectName: string) => {
+  if (!subjectName.trim()) {
+    toast.error("Preencha o nome da disciplina");
+    return;
+  }
 
-    const updatedCategories = [...categories, newCategory];
-    setCategories(updatedCategories);
-    localStorage.setItem('categories', JSON.stringify(updatedCategories));
-    return newCategory;
-  };
+  try {
+    const response = await fetch("https://bancodequestoes-api.onrender.com/subjects", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: subjectName,
+        createdAt: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao adicionar disciplina");
+    }
+
+    const newSubject: Subject = await response.json();
+
+    const updatedSubjects = [...subjects, newSubject];
+    setSubjects(updatedSubjects);
+
+    toast.success(`Disciplina ${newSubject.name} adicionada com sucesso`);
+    return newSubject;
+  } catch (error) {
+    toast.error((error as Error).message);
+    return null;
+  }
+};
+
 
   const handleLogoutClick = () => {
     onLogout();
@@ -139,9 +150,9 @@ export function NewQuestionPage({ user, onLogout }: NewQuestionPageProps) {
           transition={{ delay: 0.2, duration: 0.4 }}
         >
           <QuestionForm
-            categories={categories}
+            subjects={subjects}
             onSubmit={handleAddQuestion}
-            onAddCategory={handleAddCategory}
+            onAddSubject={handleAddSubject}
             onCancel={() => navigate('/')}
           />
         </motion.div>

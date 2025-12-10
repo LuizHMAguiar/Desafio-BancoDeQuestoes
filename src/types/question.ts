@@ -1,5 +1,5 @@
 export interface Question {
-  id: number;
+  id?: number;
   authorId: number;
   authorName: string;
   subject: string;

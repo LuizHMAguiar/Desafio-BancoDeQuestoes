@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Question, Category } from '../types/question';
+import { Question, Subject } from '../types/question';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -11,17 +11,17 @@ import { X, Plus, Image as ImageIcon, Upload } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
 interface QuestionFormProps {
-  categories: Category[];
+  subjects: Subject[];
   onSubmit: (question: Omit<Question, 'id' | 'authorId' | 'authorName' | 'createdAt'>) => void;
-  onAddCategory: (name: string) => Category;
+  onAddsubject: (name: string) => Subject;
   onCancel: () => void;
   initialQuestion?: Question;
   isEditing?: boolean;
 }
 
-export function QuestionForm({ categories, onSubmit, onAddCategory, onCancel, initialQuestion, isEditing }: QuestionFormProps) {
-  const [category, setCategory] = useState(initialQuestion?.category || '');
-  const [newCategoryName, setNewCategoryName] = useState('');
+export function QuestionForm({ subjects, onSubmit, onAddsubject, onCancel, initialQuestion, isEditing }: QuestionFormProps) {
+  const [subject, setSubject] = useState(initialQuestion?.subject || '');
+  const [newsubjectName, setNewsubjectName] = useState('');
   const [tags, setTags] = useState<string[]>(initialQuestion?.tags || []);
   const [tagInput, setTagInput] = useState('');
   const [statement, setStatement] = useState(initialQuestion?.statement || '');
@@ -46,30 +46,52 @@ export function QuestionForm({ categories, onSubmit, onAddCategory, onCancel, in
     setOptions(newOptions);
   };
 
-  const handleCreateCategory = () => {
-    if (newCategoryName.trim()) {
-      const newCategory = onAddCategory(newCategoryName.trim());
-      setCategory(newCategory.name);
-      setNewCategoryName('');
+  const handleCreatesubject = () => {
+    if (newsubjectName.trim()) {
+      const newsubject = onAddsubject(newsubjectName.trim());
+      setSubject(newsubject.name);
+      setNewsubjectName('');
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!category || !statement.trim() || options.some(o => !o.trim())) {
-      alert('Por favor, preencha todos os campos obrigatórios');
-      return;
-    }
+  if (!subject || !statement.trim() || options.some((o) => !o.trim())) {
+    alert("Por favor, preencha todos os campos obrigatórios");
+    return;
+  }
 
-    onSubmit({
-      category,
-      tags,
-      statement,
-      options,
-      correctOption,
+  try {
+    const response = await fetch("https://bancodequestoes-api.onrender.com/questions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        subject,
+        tags,
+        statement,
+        options,
+        correctOption,
+        createdAt: new Date().toISOString(), // opcional, se a API aceitar
+      }),
     });
-  };
+
+    if (!response.ok) {
+      throw new Error("Erro ao salvar questão");
+    }
+
+    const savedQuestion = await response.json();
+
+    alert(`Questão adicionada com sucesso! ID: ${savedQuestion.id}`);
+    // aqui você pode limpar o formulário
+    // setSubject(""); setStatement(""); setOptions([...]); etc.
+  } catch (error) {
+    alert((error as Error).message);
+  }
+};
+
 
   const applyFormatting = (format: 'bold' | 'italic' | 'underline') => {
     const textarea = document.getElementById('statement') as HTMLTextAreaElement;
@@ -129,21 +151,21 @@ export function QuestionForm({ categories, onSubmit, onAddCategory, onCancel, in
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-      {/* Category Selection */}
+      {/* subject Selection */}
       <motion.div 
         className="space-y-2"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <Label htmlFor="category">Disciplina *</Label>
+        <Label htmlFor="subject">Disciplina *</Label>
         <div className="flex gap-2">
-          <Select value={category} onValueChange={setCategory}>
+          <Select value={subject} onValueChange={setSubject}>
             <SelectTrigger className="flex-1">
               <SelectValue placeholder="Selecione uma disciplina" />
             </SelectTrigger>
             <SelectContent>
-              {categories.map(cat => (
+              {subjects.map(cat => (
                 <SelectItem key={cat.id} value={cat.name}>
                   {cat.name}
                 </SelectItem>
@@ -155,12 +177,12 @@ export function QuestionForm({ categories, onSubmit, onAddCategory, onCancel, in
         <div className="flex gap-2 mt-2">
           <Input
             placeholder="Nova disciplina"
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
+            value={newsubjectName}
+            onChange={(e) => setNewsubjectName(e.target.value)}
             className="flex-1"
           />
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button type="button" variant="outline" onClick={handleCreateCategory} className="flex-shrink-0">
+            <Button type="button" variant="outline" onClick={handleCreatesubject} className="flex-shrink-0">
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Criar</span>
             </Button>
