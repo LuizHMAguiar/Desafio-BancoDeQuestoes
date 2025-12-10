@@ -1,32 +1,41 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion } from "motion/react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner@2.0.3';
+import { motion } from 'motion/react';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
-import { Logo } from "./Logo";
+} from './ui/card';
+import { Logo } from './Logo';
 
 interface LoginScreenProps {
-  onLogin: (email: string, password: string) => void;
+  onLogin: (email: string, password: string) => Promise<void>;
 }
 
 export function LoginScreen({ onLogin }: LoginScreenProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email && password) {
-      onLogin(email, password);
-      navigate("/");
+      setLoading(true);
+      try {
+        await onLogin(email, password);
+        navigate('/');
+      } catch (error) {
+        toast.error((error as Error).message || 'E-mail ou senha inválidos.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -44,7 +53,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         transition={{
           delay: 0.1,
           duration: 0.4,
-          type: "spring",
+          type: 'spring',
         }}
         className="w-full max-w-md"
       >
@@ -56,16 +65,14 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               transition={{
                 delay: 0.2,
                 duration: 0.6,
-                type: "spring",
+                type: 'spring',
                 stiffness: 200,
               }}
               className="flex justify-center"
             >
               <Logo size="lg" />
             </motion.div>
-            <CardTitle className="text-center">
-              Sistema de Questões
-            </CardTitle>
+            <CardTitle className="text-center">Sistema de Questões</CardTitle>
             <CardDescription className="text-center">
               Faça login para acessar o banco de questões
             </CardDescription>
@@ -111,9 +118,21 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                <Button type="submit" className="w-full">
-                  Entrar
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Entrando...' : 'Entrar'}
                 </Button>
+
+                <div className="text-center mt-4">
+                  <p className="text-sm text-slate-600">
+                    Não tem uma conta?{' '}
+                    <Link
+                      to="/cadastro"
+                      className="text-[#4BA551] hover:underline transition-colors"
+                    >
+                      Cadastre-se
+                    </Link>
+                  </p>
+                </div>
               </motion.div>
             </form>
           </CardContent>
