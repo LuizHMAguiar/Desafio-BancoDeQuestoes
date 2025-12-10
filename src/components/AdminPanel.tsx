@@ -57,60 +57,8 @@ interface AdminPanelProps {
   onLogout: () => void;
 }
 
-// Mock data initialization
-const initializeData = () => {
-  // Initialize teachers
-  if (!localStorage.getItem("teachers")) {
-    const defaultTeachers: Teacher[] = [
-      {
-        id: "prof-1",
-        name: "Professor",
-        email: "professor@escola.com",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "prof-2",
-        name: "Maria Silva",
-        email: "maria.silva@escola.com",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "prof-3",
-        name: "João Santos",
-        email: "joao.santos@escola.com",
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    localStorage.setItem("teachers", JSON.stringify(defaultTeachers));
-  }
 
-  // Initialize subjects
-  if (!localStorage.getItem("subjects")) {
-    const defaultSubjects: Subject[] = [
-      {
-        id: "subj-1",
-        name: "Matemática",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "subj-2",
-        name: "Português",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "subj-3",
-        name: "História",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "subj-4",
-        name: "Geografia",
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    localStorage.setItem("subjects", JSON.stringify(defaultSubjects));
-  }
-};
+
 
 export function AdminPanel({ user, onLogout }: AdminPanelProps) {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -133,119 +81,256 @@ export function AdminPanel({ user, onLogout }: AdminPanelProps) {
     loadData();
   }, []);
 
-  const loadData = () => {
-    const storedTeachers = localStorage.getItem("teachers");
-    const storedSubjects = localStorage.getItem("subjects");
-
-    if (storedTeachers) {
-      setTeachers(JSON.parse(storedTeachers));
+  const loadData = async () => {
+  try {
+    // Busca professores ainda do localStorage (se quiser manter)
+    const responseUser = await fetch("https://bancodequestoes-api.onrender.com/users");
+    if (!responseUser.ok) {
+      throw new Error("Erro ao buscar disciplinas");
     }
-    if (storedSubjects) {
-      setSubjects(JSON.parse(storedSubjects));
-    }
-  };
+    const usersFromApi = await responseUser.json();
+    setSubjects(usersFromApi);
 
-  const handleAddTeacher = () => {
-    if (!teacherForm.name || !teacherForm.email) {
-      toast.error("Preencha todos os campos");
-      return;
+    // Busca disciplinas da API
+    const response = await fetch("https://bancodequestoes-api.onrender.com/subjects");
+    if (!response.ok) {
+      throw new Error("Erro ao buscar disciplinas");
     }
 
-    const newTeacher: Teacher = {
-      id: `prof-${Date.now()}`,
-      name: teacherForm.name,
-      email: teacherForm.email,
-      createdAt: new Date().toISOString(),
-    };
+    const subjectsFromApi = await response.json();
+    setSubjects(subjectsFromApi); // atualiza estado com dados da API
+  } catch (error) {
+    console.error(error);
+    toast.error("Não foi possível carregar as disciplinas");
+  }
+};
+
+const initializeData = async () => {
+  try {
+    // Busca professores na API
+    const response = await fetch("https://bancodequestoes-api.onrender.com/users");
+    if (!response.ok) {
+      throw new Error("Erro ao buscar professores");
+    }
+
+    const users = await response.json();
+
+    // Filtra apenas os que têm role professor
+    const teachers: Teacher[] = users.filter((u: any) => u.role === "professor");
+
+    // Atualiza estado (se você tiver setTeachers disponível)
+    setTeachers(teachers);
+
+    // Se quiser manter cache local opcional
+    localStorage.setItem("teachers", JSON.stringify(teachers));
+  } catch (error) {
+    console.error(error);
+    toast.error("Não foi possível carregar os professores da API");
+  }
+}; 
+
+  const handleAddTeacher = async () => {
+  if (!teacherForm.name || !teacherForm.email) {
+    toast.error("Preencha todos os campos");
+    return;
+  }
+
+  try {
+    const response = await fetch("https://bancodequestoes-api.onrender.com/users", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: teacherForm.name,
+        email: teacherForm.email,
+        role: "professor", // define o papel do usuário
+        createdAt: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao adicionar professor");
+    }
+
+    const newTeacher: Teacher = await response.json();
 
     const updatedTeachers = [...teachers, newTeacher];
     setTeachers(updatedTeachers);
-    localStorage.setItem("teachers", JSON.stringify(updatedTeachers));
 
-    toast.success(`Professor ${teacherForm.name} adicionado com sucesso`);
+    toast.success(`Professor ${newTeacher.name} adicionado com sucesso`);
     setTeacherForm({ name: "", email: "" });
     setTeacherDialogOpen(false);
-  };
+  } catch (error) {
+    toast.error((error as Error).message);
+  }
+};
 
-  const handleEditTeacher = () => {
-    if (!editingTeacher || !teacherForm.name || !teacherForm.email) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
+const handleEditTeacher = async () => {
+  if (!editingTeacher || !teacherForm.name || !teacherForm.email) {
+    toast.error("Preencha todos os campos");
+    return;
+  }
 
-    const updatedTeachers = teachers.map((t) =>
-      t.id === editingTeacher.id
-        ? { ...t, name: teacherForm.name, email: teacherForm.email }
-        : t
+  try {
+    const response = await fetch(
+      `https://bancodequestoes-api.onrender.com/users/${editingTeacher.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...editingTeacher,
+          name: teacherForm.name,
+          email: teacherForm.email,
+        }),
+      }
     );
 
-    setTeachers(updatedTeachers);
-    localStorage.setItem("teachers", JSON.stringify(updatedTeachers));
+    if (!response.ok) {
+      throw new Error("Erro ao atualizar professor");
+    }
 
-    toast.success(`Professor ${teacherForm.name} atualizado com sucesso`);
+    const updatedTeacher: Teacher = await response.json();
+
+    const updatedTeachers = teachers.map((t) =>
+      t.id === updatedTeacher.id ? updatedTeacher : t
+    );
+    setTeachers(updatedTeachers);
+
+    toast.success(`Professor ${updatedTeacher.name} atualizado com sucesso`);
     setTeacherForm({ name: "", email: "" });
     setEditingTeacher(null);
     setTeacherDialogOpen(false);
-  };
+  } catch (error) {
+    toast.error((error as Error).message);
+  }
+};
 
-  const handleAddSubject = () => {
-    if (!subjectForm.name) {
-      toast.error("Preencha o nome da disciplina");
-      return;
+
+  const handleAddSubject = async () => {
+  if (!subjectForm.name) {
+    toast.error("Preencha o nome da disciplina");
+    return;
+  }
+
+  try {
+    const response = await fetch("https://bancodequestoes-api.onrender.com/subjects", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: subjectForm.name,
+        createdAt: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao adicionar disciplina");
     }
 
-    const newSubject: Subject = {
-      id: `subj-${Date.now()}`,
-      name: subjectForm.name,
-      createdAt: new Date().toISOString(),
-    };
+    const newSubject: Subject = await response.json();
 
+    // Atualiza estado com o retorno da API
     const updatedSubjects = [...subjects, newSubject];
     setSubjects(updatedSubjects);
-    localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
 
-    toast.success(`Disciplina ${subjectForm.name} adicionada com sucesso`);
+    toast.success(`Disciplina ${newSubject.name} adicionada com sucesso`);
     setSubjectForm({ name: "" });
     setSubjectDialogOpen(false);
-  };
+  } catch (error) {
+    toast.error((error as Error).message);
+  }
+};
 
-  const handleEditSubject = () => {
-    if (!editingSubject || !subjectForm.name) {
-      toast.error("Preencha o nome da disciplina");
-      return;
+const handleEditSubject = async () => {
+  if (!editingSubject || !subjectForm.name) {
+    toast.error("Preencha o nome da disciplina");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `https://bancodequestoes-api.onrender.com/subjects/${editingSubject.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...editingSubject,
+          name: subjectForm.name,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Erro ao atualizar disciplina");
     }
 
+    const updatedSubject: Subject = await response.json();
+
     const updatedSubjects = subjects.map((s) =>
-      s.id === editingSubject.id ? { ...s, name: subjectForm.name } : s
+      s.id === updatedSubject.id ? updatedSubject : s
     );
 
     setSubjects(updatedSubjects);
-    localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
 
-    toast.success(`Disciplina ${subjectForm.name} atualizada com sucesso`);
+    toast.success(`Disciplina ${updatedSubject.name} atualizada com sucesso`);
     setSubjectForm({ name: "" });
     setEditingSubject(null);
     setSubjectDialogOpen(false);
-  };
+  } catch (error) {
+    toast.error((error as Error).message);
+  }
+};
 
-  const confirmDelete = () => {
-    if (!itemToDelete) return;
 
+ const confirmDelete = async () => {
+  if (!itemToDelete) return;
+
+  try {
     if (itemToDelete.type === "teacher") {
+      // Chamada DELETE para professores (se a API tiver esse endpoint)
+      const response = await fetch(
+        `https://bancodequestoes-api.onrender.com/teachers/${itemToDelete.id}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao remover professor");
+      }
+
       const updatedTeachers = teachers.filter((t) => t.id !== itemToDelete.id);
       setTeachers(updatedTeachers);
-      localStorage.setItem("teachers", JSON.stringify(updatedTeachers));
+
       toast.success(`Professor ${itemToDelete.name} removido com sucesso`);
     } else {
+      // Chamada DELETE para disciplinas
+      const response = await fetch(
+        `https://bancodequestoes-api.onrender.com/subjects/${itemToDelete.id}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao remover disciplina");
+      }
+
       const updatedSubjects = subjects.filter((s) => s.id !== itemToDelete.id);
       setSubjects(updatedSubjects);
-      localStorage.setItem("subjects", JSON.stringify(updatedSubjects));
+
       toast.success(`Disciplina ${itemToDelete.name} removida com sucesso`);
     }
 
     setItemToDelete(null);
     setDeleteDialogOpen(false);
-  };
+  } catch (error) {
+    toast.error((error as Error).message);
+  }
+};
+
 
   const openTeacherDialog = (teacher?: Teacher) => {
     if (teacher) {
@@ -397,7 +482,7 @@ export function AdminPanel({ user, onLogout }: AdminPanelProps) {
                         <TableRow>
                           <TableHead>Nome</TableHead>
                           <TableHead>Email</TableHead>
-                          <TableHead>Cadastrado em</TableHead>
+                        
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -422,11 +507,6 @@ export function AdminPanel({ user, onLogout }: AdminPanelProps) {
                             >
                               <TableCell>{teacher.name}</TableCell>
                               <TableCell>{teacher.email}</TableCell>
-                              <TableCell>
-                                {new Date(teacher.createdAt).toLocaleDateString(
-                                  "pt-BR"
-                                )}
-                              </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
                                   <Button
