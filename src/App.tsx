@@ -112,24 +112,43 @@ export default function App() {
   }, []);
 
   const handleLogin = async (email: string, password: string) => {
-    // NOTA: A API fornecida não parece ter um endpoint de autenticação real com senha.
-    // Esta implementação busca um usuário pelo e-mail.
-    // Em um cenário real, você faria um POST para um endpoint de login com e-mail e senha.
-    const response = await fetch(
-      `https://bancodequestoes-api.onrender.com/users?email=${email}`
+    // Primeiro, verifica usuários registrados localmente
+    const registeredUsers = JSON.parse(
+      localStorage.getItem('registeredUsers') || '[]'
     );
-    if (!response.ok) {
-      throw new Error('Falha ao conectar com o servidor.');
-    }
-    const users: User[] = await response.json();
-    const user = users[0]; // Pega o primeiro usuário que corresponde ao email
+    const localUser = registeredUsers.find((u: any) => u.email === email);
 
-    if (user) {
-      // A API retorna 'id' como número, mas o tipo User espera string.
-      const loggedUser = { ...user, id: user.id };
+    if (localUser) {
+      // Valida a senha para usuários locais
+      if (localUser.password !== password) {
+        throw new Error('E-mail ou senha inválidos.');
+      }
+      const loggedUser = { ...localUser };
       setUser(loggedUser);
       localStorage.setItem('currentUser', JSON.stringify(loggedUser));
-    } else {
+      return;
+    }
+
+    // Se não encontrar localmente, tenta a API (para contas de teste)
+    try {
+      const response = await fetch(
+        `https://bancodequestoes-api.onrender.com/users?email=${email}`
+      );
+      if (!response.ok) {
+        throw new Error('Falha ao conectar com o servidor.');
+      }
+      const users: User[] = await response.json();
+      const apiUser = users[0]; // Pega o primeiro usuário que corresponde ao email
+
+      if (apiUser) {
+        // A API retorna 'id' como número, mas o tipo User espera string.
+        const loggedUser = { ...apiUser, id: String(apiUser.id) };
+        setUser(loggedUser);
+        localStorage.setItem('currentUser', JSON.stringify(loggedUser));
+      } else {
+        throw new Error('Usuário não encontrado.');
+      }
+    } catch (error) {
       throw new Error('Usuário não encontrado.');
     }
   };
