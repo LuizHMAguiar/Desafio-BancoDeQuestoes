@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Question, Category } from '../types/question';
+import { Question } from '../types/question';
 import { QuestionCard } from './QuestionCard';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -17,31 +17,41 @@ import { Download, Search, X, Plus } from 'lucide-react';
 
 interface QuestionListProps {
   questions: Question[];
-  categories: Category[];
+  // Removi categories e subjects das props pois vamos calcular dinamicamente
   onDeleteQuestion: (id: number) => void;
   onCreateNew?: () => void;
 }
 
 export function QuestionList({
   questions,
-  categories,
   onDeleteQuestion,
   onCreateNew,
 }: QuestionListProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedAuthor, setSelectedAuthor] = useState<string>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(true);
+  
+  // CORREÇÃO 1: Extrair disciplinas (subjects) diretamente das questões
+  const uniqueSubjects = useMemo(() => {
+    // Pegamos o subject de cada questão, filtramos nulos/indefinidos e removemos duplicatas
+    const subjects = new Set<string>(
+      questions
+        ?.map((q) => q.subject)
+        .filter((s): s is string => !!s) // Remove undefined (como no ID 31) e garante tipo string
+    );
+    return Array.from(subjects).sort();
+  }, [questions]);
 
-  // Get unique authors and tags
+  // Get unique authors
   const authors = useMemo(() => {
     const uniqueAuthors = Array.from(
-      new Set(questions?.map((q) => q.authorName))
+      new Set(questions?.map((q) => q.authorName).filter(Boolean))
     );
     return uniqueAuthors.sort();
   }, [questions]);
 
+  // Get unique tags
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     questions?.forEach((q) => q.tags?.forEach((t) => tags.add(t)));
@@ -52,6 +62,9 @@ export function QuestionList({
   const filteredQuestions = useMemo(() => {
     return (
       questions?.filter((question) => {
+        // Ignora questões quebradas (sem enunciado ou ID)
+        if (!question.statement) return false;
+
         // Filter by search term
         if (
           searchTerm &&
@@ -60,10 +73,10 @@ export function QuestionList({
           return false;
         }
 
-        // Filter by category
+        // Filter by Subject
         if (
-          selectedCategory !== 'all' &&
-          question.subject !== selectedCategory
+          selectedSubject !== 'all' &&
+          question.subject !== selectedSubject
         ) {
           return false;
         }
@@ -79,7 +92,7 @@ export function QuestionList({
         // Filter by tags
         if (selectedTags.length > 0) {
           const hasAllTags = selectedTags.every((tag) =>
-            question.tags.includes(tag)
+            question.tags?.includes(tag)
           );
           if (!hasAllTags) return false;
         }
@@ -87,7 +100,7 @@ export function QuestionList({
         return true;
       }) ?? []
     );
-  }, [questions, searchTerm, selectedCategory, selectedAuthor, selectedTags]);
+  }, [questions, searchTerm, selectedSubject, selectedAuthor, selectedTags]);
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -99,7 +112,7 @@ export function QuestionList({
 
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedCategory('all');
+    setSelectedSubject('all');
     setSelectedAuthor('all');
     setSelectedTags([]);
   };
@@ -123,16 +136,16 @@ export function QuestionList({
     const rows = filteredQuestions.map((q) => [
       q.id,
       q.authorName,
-      q.category,
+      q.subject, // Corrigido de q.Subject para q.subject (case sensitive)
       q.tags?.join('; ') || '',
-      q.statement.replace(/"/g, '""'), // Escape quotes
-      q.options[0]?.replace(/"/g, '""') || '',
-      q.options[1]?.replace(/"/g, '""') || '',
-      q.options[2]?.replace(/"/g, '""') || '',
-      q.options[3]?.replace(/"/g, '""') || '',
-      q.options[4]?.replace(/"/g, '""') || '',
-      String.fromCharCode(65 + q.correctOption), // Convert 0-4 to A-E
-      new Date(q.createdAt).toLocaleDateString('pt-BR'),
+      q.statement?.replace(/"/g, '""') || '',
+      q.options?.[0]?.replace(/"/g, '""') || '',
+      q.options?.[1]?.replace(/"/g, '""') || '',
+      q.options?.[2]?.replace(/"/g, '""') || '',
+      q.options?.[3]?.replace(/"/g, '""') || '',
+      q.options?.[4]?.replace(/"/g, '""') || '',
+      String.fromCharCode(65 + (q.correctOption || 0)),
+      q.createdAt ? new Date(q.createdAt).toLocaleDateString('pt-BR') : '',
     ]);
 
     const csvContent = [
@@ -158,7 +171,7 @@ export function QuestionList({
 
   const hasActiveFilters =
     searchTerm ||
-    selectedCategory !== 'all' ||
+    selectedSubject !== 'all' ||
     selectedAuthor !== 'all' ||
     selectedTags.length > 0;
 
@@ -210,26 +223,27 @@ export function QuestionList({
             </div>
           </motion.div>
 
-          {/* Category Filter */}
+          {/* Subject Filter CORRIGIDO */}
           <motion.div
             className="space-y-2"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Label htmlFor="category">Disciplina</Label>
+            <Label htmlFor="Subject">Disciplina</Label>
             <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
+              value={selectedSubject}
+              onValueChange={setSelectedSubject}
             >
-              <SelectTrigger id="category">
+              <SelectTrigger id="Subject">
                 <SelectValue placeholder="Todas as disciplinas" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as disciplinas</SelectItem>
-                {categories.map((cat) => (
-                  <SelectItem key={String(cat.id)} value={cat.name}>
-                    {cat.name}
+                {/* Aqui usamos a lista gerada dinamicamente */}
+                {uniqueSubjects.map((subject) => (
+                  <SelectItem key={subject} value={subject}>
+                    {subject}
                   </SelectItem>
                 ))}
               </SelectContent>
