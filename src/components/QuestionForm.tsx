@@ -61,6 +61,7 @@ export function QuestionForm({
   const [newsubjectName, setNewsubjectName] = useState('');
   const [tags, setTags] = useState<string[]>(initialQuestion?.tags || []);
   const [tagInput, setTagInput] = useState('');
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [statement, setStatement] = useState(initialQuestion?.statement || '');
   const [options, setOptions] = useState(
     initialQuestion?.options || ['', '', '', '', '']
@@ -110,6 +111,27 @@ export function QuestionForm({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Fetch available tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      try {
+        const response = await fetch(
+          'https://bancodequestoes-api.onrender.com/tags'
+        );
+        if (response.ok) {
+          const tagsData = await response.json();
+          // Assuming the API returns array of objects with 'name' property
+          const tagNames = tagsData.map((tag: any) => tag.name || tag);
+          setAvailableTags(tagNames);
+        }
+      } catch (error) {
+        console.error('Error fetching tags:', error);
+      }
+    };
+
+    fetchTags();
   }, []);
 
   const updateImageInStatement = (
@@ -197,6 +219,12 @@ export function QuestionForm({
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(tags.filter((t) => t !== tagToRemove));
+  };
+
+  const handleAddAvailableTag = (tag: string) => {
+    if (!tags.includes(tag)) {
+      setTags([...tags, tag]);
+    }
   };
 
   const handleOptionChange = (index: number, value: string) => {
@@ -522,6 +550,43 @@ export function QuestionForm({
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Available Tags */}
+          {availableTags.length > 0 && (
+            <motion.div
+              className="mt-3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Label className="text-sm text-gray-600 mb-2 block">
+                Tags disponíveis:
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {availableTags.map((tag, index) => (
+                  <motion.div
+                    key={`available-${tag}`}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 + index * 0.02 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Badge
+                      variant={tags.includes(tag) ? 'default' : 'outline'}
+                      className="cursor-pointer hover:bg-primary/20"
+                      onClick={() => handleAddAvailableTag(tag)}
+                    >
+                      {tag}
+                    </Badge>
+                  </motion.div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Clique nas tags para adicioná-las à questão
+              </p>
+            </motion.div>
+          )}
         </motion.div>
 
         <motion.div
