@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { QuestionForm } from './QuestionForm';
 import { LogOut, ArrowLeft } from 'lucide-react';
-import { Question, Category, User } from '../types/question';
+import { Question, Subject, User } from '../types/question';
 import { Logo } from './Logo';
 import { toast } from 'sonner';
 
@@ -13,48 +13,52 @@ interface EditQuestionPageProps {
   onLogout: () => void;
 }
 
-// Mock initial categories
-const initialCategories: Category[] = [
-  { id: '1', name: 'Matemática' },
-  { id: '2', name: 'Português' },
-  { id: '3', name: 'História' },
-  { id: '4', name: 'Geografia' },
-  { id: '5', name: 'Ciências' },
+// Mock initial subjects
+const initialSubjects: Subject[] = [
+  { id: 1, name: 'Matemática', createdAt: '2024-01-01T00:00:00Z' },
+  { id: 2, name: 'Português', createdAt: '2024-01-01T00:00:00Z' },
+  { id: 3, name: 'História', createdAt: '2024-01-01T00:00:00Z' },
+  { id: 4, name: 'Geografia', createdAt: '2024-01-01T00:00:00Z' },
+  { id: 5, name: 'Ciências', createdAt: '2024-01-01T00:00:00Z' },
 ];
 
 export function EditQuestionPage({ user, onLogout }: EditQuestionPageProps) {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [question, setQuestion] = useState<Question | null>(null);
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
-  // Load categories and question from localStorage
+  // Load subjects and question
   useEffect(() => {
-    // Try to load subjects from admin panel first, otherwise use initial categories
-    const savedSubjects = localStorage.getItem('subjects');
-    const savedCategories = localStorage.getItem('categories');
+    const fetchSubjects = async () => {
+      try {
+        const response = await fetch(
+          'https://bancodequestoes-api.onrender.com/subjects'
+        );
+        if (!response.ok) {
+          throw new Error('Erro ao carregar disciplinas');
+        }
+        const data: Subject[] = await response.json();
+        setSubjects(data);
+      } catch (error) {
+        toast.error((error as Error).message);
+        // Fallback to localStorage
+        const savedSubjects = localStorage.getItem('subjects');
+        if (savedSubjects) {
+          setSubjects(JSON.parse(savedSubjects));
+        } else {
+          setSubjects(initialSubjects);
+        }
+      }
+    };
 
-    // Prioritize subjects from admin panel
-    if (savedSubjects) {
-      const subjects = JSON.parse(savedSubjects);
-      const categoriesFromSubjects = subjects.map((s: any) => ({
-        id: s.id,
-        name: s.name
-      }));
-      setCategories(categoriesFromSubjects);
-      localStorage.setItem('categories', JSON.stringify(categoriesFromSubjects));
-    } else if (savedCategories) {
-      setCategories(JSON.parse(savedCategories));
-    } else {
-      setCategories(initialCategories);
-      localStorage.setItem('categories', JSON.stringify(initialCategories));
-    }
+    fetchSubjects();
 
     // Load the question to edit
     const savedQuestions = localStorage.getItem('questions');
     if (savedQuestions && id) {
       const questions: Question[] = JSON.parse(savedQuestions);
-      const foundQuestion = questions.find(q => q.id === id);
+      const foundQuestion = questions.find((q) => q.id === parseInt(id));
       if (foundQuestion) {
         setQuestion(foundQuestion);
       } else {
@@ -63,41 +67,60 @@ export function EditQuestionPage({ user, onLogout }: EditQuestionPageProps) {
     }
   }, [id, navigate]);
 
-  const handleUpdateQuestion = (updatedQuestion: Omit<Question, 'id' | 'authorId' | 'authorName' | 'createdAt'>) => {
-    if (!question) return;
-
-    const editedQuestion: Question = {
-      ...question,
-      ...updatedQuestion,
-    };
-
+  const handleUpdateQuestion = (updatedQuestion: Question) => {
     // Load existing questions
     const savedQuestions = localStorage.getItem('questions');
     const questions = savedQuestions ? JSON.parse(savedQuestions) : [];
-    
+
     // Update question
-    const updatedQuestions = questions.map((q: Question) => 
-      q.id === question.id ? editedQuestion : q
+    const updatedQuestions = questions.map((q: Question) =>
+      q.id === updatedQuestion.id ? updatedQuestion : q
     );
     localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-    
+
     // Show success message
     toast.success('Questão atualizada com sucesso!');
-    
+
     // Navigate back to question list
     navigate('/');
   };
 
-  const handleAddCategory = (categoryName: string) => {
-    const newCategory: Category = {
-      id: Date.now().toString(),
-      name: categoryName,
-    };
+  const handleAddSubject = async (subjectName: string) => {
+    if (!subjectName.trim()) {
+      toast.error('Preencha o nome da disciplina');
+      return null;
+    }
 
-    const updatedCategories = [...categories, newCategory];
-    setCategories(updatedCategories);
-    localStorage.setItem('categories', JSON.stringify(updatedCategories));
-    return newCategory;
+    try {
+      const response = await fetch(
+        'https://bancodequestoes-api.onrender.com/subjects',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: subjectName,
+            createdAt: new Date().toISOString(),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Erro ao adicionar disciplina');
+      }
+
+      const newSubject: Subject = await response.json();
+
+      const updatedSubjects = [...subjects, newSubject];
+      setSubjects(updatedSubjects);
+
+      toast.success(`Disciplina ${newSubject.name} adicionada com sucesso`);
+      return newSubject;
+    } catch (error) {
+      toast.error((error as Error).message);
+      return null;
+    }
   };
 
   const handleLogoutClick = () => {
@@ -113,7 +136,7 @@ export function EditQuestionPage({ user, onLogout }: EditQuestionPageProps) {
           transition={{
             duration: 1,
             repeat: Infinity,
-            ease: "linear",
+            ease: 'linear',
           }}
           className="w-8 h-8 sm:w-10 sm:h-10 border-4 border-primary border-t-transparent rounded-full"
         />
@@ -122,7 +145,7 @@ export function EditQuestionPage({ user, onLogout }: EditQuestionPageProps) {
   }
 
   return (
-    <motion.div 
+    <motion.div
       className="min-h-screen bg-gradient-to-br from-green-50 via-white to-red-50"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -130,17 +153,25 @@ export function EditQuestionPage({ user, onLogout }: EditQuestionPageProps) {
       transition={{ duration: 0.3 }}
     >
       {/* Header */}
-      <motion.header 
+      <motion.header
         className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        transition={{ duration: 0.4, type: "spring" }}
+        transition={{ duration: 0.4, type: 'spring' }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="flex-shrink-0">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/')}
+                  className="flex-shrink-0"
+                >
                   <ArrowLeft className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Voltar</span>
                 </Button>
@@ -148,11 +179,21 @@ export function EditQuestionPage({ user, onLogout }: EditQuestionPageProps) {
               <Logo size="sm" className="flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <h1 className="truncate">Editar Questão</h1>
-                <p className="text-gray-600 text-sm sm:text-base hidden sm:block">Modificar questão existente</p>
+                <p className="text-gray-600 text-sm sm:text-base hidden sm:block">
+                  Modificar questão existente
+                </p>
               </div>
             </div>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full sm:w-auto">
-              <Button variant="outline" onClick={handleLogoutClick} className="w-full sm:w-auto">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full sm:w-auto"
+            >
+              <Button
+                variant="outline"
+                onClick={handleLogoutClick}
+                className="w-full sm:w-auto"
+              >
                 <LogOut className="mr-1 sm:mr-2 h-4 w-4" />
                 Sair
               </Button>
@@ -163,19 +204,20 @@ export function EditQuestionPage({ user, onLogout }: EditQuestionPageProps) {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <motion.div 
+        <motion.div
           className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
         >
           <QuestionForm
-            categories={categories}
+            subjects={subjects}
             onSubmit={handleUpdateQuestion}
-            onAddCategory={handleAddCategory}
+            onAddSubject={handleAddSubject}
             onCancel={() => navigate('/')}
             initialQuestion={question}
             isEditing={true}
+            user={user}
           />
         </motion.div>
       </main>
