@@ -36,13 +36,7 @@ function AnimatedRoutes({
       <Routes location={location} key={location.pathname}>
         <Route
           path="/cadastro"
-          element={
-            user ? (
-              <Navigate to="/" replace />
-            ) : (
-              <RegisterScreen onRegister={handleRegister} />
-            )
-          }
+          element={user ? <Navigate to="/" replace /> : <RegisterScreen />}
         />
 
         <Route

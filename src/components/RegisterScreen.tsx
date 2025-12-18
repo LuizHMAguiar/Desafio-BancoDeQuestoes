@@ -16,10 +16,10 @@ import { Alert, AlertDescription } from './ui/alert';
 import { AlertCircle, CheckCircle2, Check, X } from 'lucide-react';
 
 interface RegisterScreenProps {
-  onRegister: (name: string, email: string, password: string) => boolean;
+  // No longer needs onRegister prop since API call is handled internally
 }
 
-export function RegisterScreen({ onRegister }: RegisterScreenProps) {
+export function RegisterScreen({}: RegisterScreenProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,22 +60,63 @@ export function RegisterScreen({ onRegister }: RegisterScreenProps) {
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    const registered = onRegister(name.trim(), email.trim(), password);
+    try {
+      // Create user via API
+      const apiResponse = await fetch(
+        'https://bancodequestoes-api.onrender.com/users',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim(),
+            role: 'professor', // Default role for new registrations
+          }),
+        }
+      );
 
-    if (registered) {
+      if (!apiResponse.ok) {
+        const errorData = await apiResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erro ao criar conta na API');
+      }
+
+      const createdUser = await apiResponse.json();
+
+      // Store user locally with password for login purposes
+      const registeredUsers = JSON.parse(
+        localStorage.getItem('registeredUsers') || '[]'
+      );
+
+      const localUser = {
+        id: createdUser.id,
+        name: createdUser.name,
+        email: createdUser.email,
+        password: password,
+        role: createdUser.role,
+        createdAt: new Date().toISOString(),
+      };
+
+      registeredUsers.push(localUser);
+      localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+
       setSuccess(true);
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-    } else {
-      setError('Este email já está cadastrado no sistema');
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError(
+        (error as Error).message || 'Erro ao criar conta. Tente novamente.'
+      );
     }
   };
 
