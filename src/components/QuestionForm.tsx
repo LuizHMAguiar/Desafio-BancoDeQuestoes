@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Question, Subject } from '../types/question';
+import { Question, Subject, User } from '../types/question';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -40,7 +40,7 @@ interface ImageState {
 interface QuestionFormProps {
   subjects: Subject[];
   onSubmit: (question: Question) => void;
-  onAddsubject: (name: string) => Subject;
+  onAddSubject: (name: string) => Subject;
   onCancel: () => void;
   initialQuestion?: Question;
   isEditing?: boolean;
@@ -50,7 +50,7 @@ interface QuestionFormProps {
 export function QuestionForm({
   subjects,
   onSubmit,
-  onAddsubject,
+  onAddSubject,
   onCancel,
   initialQuestion,
   isEditing,
@@ -235,7 +235,7 @@ export function QuestionForm({
 
   const handleCreatesubject = () => {
     if (newsubjectName.trim()) {
-      const newsubject = onAddsubject(newsubjectName.trim());
+      const newsubject = onAddSubject(newsubjectName.trim());
       setSubject(newsubject.name);
       setNewsubjectName('');
     }
